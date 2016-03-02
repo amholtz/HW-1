@@ -1,31 +1,33 @@
 ---
 title: "MATH 216 Homework 1"
-author: "WRITE YOUR NAME HERE"
+author: "Andrew Holtz"
 output: html_document
 ---
 
-```{r, echo=FALSE, message=FALSE, cache=TRUE}
+```{r, echo=FALSE, message=FALSE}
 # DO NOT EDIT THIS SECTION
 
 # Load packages
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(lubridate))
+```
 
+```{r, echo=FALSE, message=FALSE, cache=TRUE}
 # Load data sets. Note this assumes this .Rmd files is in the same directory as
 # the .csv files.
 flights <- read.csv("data/flights.csv", stringsAsFactors = FALSE) %>% 
-  tbl_df() %>%
-  mutate(date=as.Date(date))
+ tbl_df() %>%
+ mutate(date=as.Date(date))
 weather <- read.csv("data/weather.csv", stringsAsFactors = FALSE) %>% 
-  tbl_df() %>%
-  mutate(date=as.Date(date))
+ tbl_df() %>%
+ mutate(date=as.Date(date))
 planes <- read.csv("data/planes.csv", stringsAsFactors = FALSE) %>% 
-  tbl_df()
+ tbl_df()
 airports <- read.csv("data/airports.csv", stringsAsFactors = FALSE) %>% 
-  tbl_df()
+ tbl_df()
 states <- read.csv("data/states.csv", stringsAsFactors = FALSE) %>% 
-  tbl_df()
+ tbl_df()
 ```
 
 
@@ -36,10 +38,10 @@ states <- read.csv("data/states.csv", stringsAsFactors = FALSE) %>%
 
 Please indicate
 
-* Who you collaborated with:
-* Roughly how much time you spent on this HW:
-* What gave you the most trouble:
-* Any comments you have:
+* Who you collaborated with: Mohamed Hussein
+* Roughly how much time you spent on this HW: 9 hours
+* What gave you the most trouble: Problem number 4- I am not sure if I did this correctly. I did have a lot of trouble joining two tables for this problem. I had to join delaytime and weatherpattern by two variables "date" and "hour". I learned about full_join and using the c functino to do this. 
+* Any comments you have: I was confused for four and five what kind of conclusion I was actually suppose to make a figure for. It might be because I do not have great experience making figures yet.
 
 
 
@@ -54,6 +56,24 @@ Please indicate
 
 ```{r, echo=FALSE, message=FALSE, fig.width=12, fig.height=6}
 
+total_flights <- select(flights, date, dep_delay) %>% 
+  group_by(date) %>% 
+  tally() %>% 
+  rename(num_flights = n)
+View(total_flights)
+  
+delay_flights <- select(flights, date, dep_delay) %>%
+  filter(dep_delay > 30) %>% 
+  group_by(date) %>% 
+  tally() %>% 
+  rename(num_delayed_flights = n)
+
+prop_delayed<- left_join(total_flights,delay_flights, by = "date") %>% 
+  mutate(prop = round(num_delayed_flights / num_flights , 3))
+
+ggplot(data=prop_delayed, aes(x = date, y = prop)) + ggtitle("Proportion of Flights delayed by more than 30 minutes on each day for one year") + 
+  ylab("Proportion") + xlab("Date") + geom_line()
+
 ```
 
 
@@ -67,12 +87,33 @@ they tend to have more room.  Which airlines should these people favor?
 
 ```{r, echo=FALSE, fig.width=12, fig.height=6}
 
+carrier_plane <- select(flights,carrier,plane)
+plane_year <- select(planes, plane, year)
+carrier_year <- left_join(carrier_plane, plane_year, by= "plane")
+
+total_planes <- carrier_year %>% 
+  filter(!is.na(year)) %>%
+  group_by(carrier) %>% 
+  tally() %>% 
+  rename(total_num_planes = n)
+
+old_planes <- carrier_year %>%
+  filter(!is.na(year)) %>%
+  group_by(carrier) %>% 
+  filter(year<1980) %>% 
+  tally() %>% 
+  rename(num_old_planes = n)
+View(old_planes)
+
+prop_old_plane <- left_join(old_planes, total_planes, by= "carrier") %>% 
+  mutate(num_new_planes = total_num_planes - num_old_planes) %>% 
+  mutate(prop = round(num_old_planes / total_num_planes , 3)) 
+ 
+
+ggplot(data = prop_old_plane, aes(x= carrier, y= prop)) + ggtitle("Proportion of planes that are older than 1980 per airline") +
+  xlab("Airline") + ylab("Proportion") + geom_bar(stat="identity")
+
 ```
-
-
-
-
-
 
 
 ## Question 3:
@@ -82,6 +123,35 @@ they tend to have more room.  Which airlines should these people favor?
 
 
 ```{r, echo=FALSE, message=FALSE, fig.width=12, fig.height=6}
+
+#All flights---------
+state_sw <- select(flights, dest, carrier) %>% 
+  filter(carrier == "WN")
+airport_state <- select(airports, iata, state)
+
+state_carrier_airport <- left_join(state_sw, airport_state, by = c("dest" = "iata")) %>% 
+  group_by(state) %>% 
+  filter(!is.na(state)) %>% 
+  tally()
+
+ggplot(data = state_carrier_airport, aes(x= state,y = n, fill = state)) + xlab("State") + ylab("Frequency") + ggtitle("Southwest Airlines most flied States") + geom_bar(stat="identity")
+
+#Listed flights---------
+#meaning destination cities are only counted once per day
+state_sw_date <- select(flights, dest, carrier, date) %>% 
+  filter(carrier == "WN") %>% 
+  group_by(date) %>% 
+  count(date, dest)
+#This leaves you with the frequency of flights to each city for each day
+airport_state <- select(airports, iata, state)
+state_freq <- left_join(state_sw_date, airport_state, by = c("dest" = "iata")) %>% 
+  #combine frequency of airport per day with state
+  select(dest, state) %>% #remove n variable
+  filter(!is.na(state)) %>% 
+  group_by(state) %>% 
+  tally()
+
+ggplot(data = state_freq, aes(x= state, y = n)) + xlab("State") + ylab("Frequency") + ggtitle("Southwest Airlines most flied States per day") + geom_bar(stat="identity")
 
 ```
 
@@ -94,6 +164,48 @@ they tend to have more room.  Which airlines should these people favor?
 What weather patterns are associated with the biggest departure delays?
 
 ```{r, echo=FALSE, message=FALSE, fig.width=12, fig.height=6}
+
+Q4 <- filter(flights, dep_delay>0) %>% 
+  summarise(
+    fourt_quantile = quantile(dep_delay, 0.75) 
+  )
+
+delay_time <- select(flights,date,hour,dep_delay) %>%
+  filter(dep_delay>=25) %>% 
+  arrange(date, hour) %>% 
+  group_by(date, hour) %>% 
+  summarise(avg_delay=mean(dep_delay))
+
+weather_pattern <- select(weather, date, hour, visibility, wind_speed, humidity, dew_point, wind_dir, gust_speed, precip,conditions) %>% 
+  arrange(date, hour)
+
+
+weather_pattern_delay <- full_join(delay_time, weather_pattern, by = c("date", "hour")) %>% 
+  filter(!is.na(humidity)) %>% 
+           filter(!is.na(avg_delay)) %>% 
+                    filter(!is.na(dew_point)) %>% 
+                             filter(!is.na(gust_speed))
+                           
+                                  
+plot_hd <- ggplot(data = weather_pattern_delay, aes(x= humidity, y = avg_delay)) + geom_point()
+plot_dd <- ggplot(data = weather_pattern_delay, aes(x= dew_point, y = avg_delay)) + geom_point()
+plot_gd <- ggplot(data = weather_pattern_delay, aes(x= gust_speed, y = avg_delay)) + geom_point()
+
+plot_hd + xlab("Humidity(%)") + ylab("Delay(min)") + ggtitle("Biggest Delays by Humidity")
+plot_dd + xlab("Dew Point") + ylab("Delay(min)") + ggtitle("Biggest Delays by Dew Point")
+plot_gd + xlab("Gust Speed(mph)") + ylab("Delay(min)") + ggtitle("Biggest Delays by Gust Speed")
+
+
+#To accomplish conditions
+delay_conditions <- select(weather_pattern_delay, conditions, avg_delay) %>%
+  filter(!is.na(avg_delay)) %>% 
+  filter(!is.na(conditions)) %>% 
+  ungroup() %>% 
+  arrange(conditions) %>% 
+  group_by(conditions) %>% 
+  summarise(avg_delay = mean(avg_delay))
+
+ggplot(data = delay_conditions, aes(x= conditions, y = avg_delay, fill = conditions)) + xlab("Conditions") + geom_bar(stat="identity", position="stack") + ylab("Delay(min)") + ggtitle("Biggest Delays by Weather Condition")
 
 ```
 
@@ -109,4 +221,21 @@ function from the `lubridate` package.
 
 ```{r, echo=FALSE, message=FALSE, fig.width=12, fig.height=6}
 
+dest_carrier_date <- select(flights, date, dest, carrier) %>% 
+  mutate(month(date)) %>% #adds new column with date variable
+  filter(month(date)==7) #refines table to only data from July
+
+airport_state <- select(airports, iata, state)
+
+state_carrier_airport <- left_join(dest_carrier_date, airport_state, by = c("dest" = "iata"))
+state_carrier_airport <- left_join(state_carrier_airport, states, by = "state") 
+
+region_freq <- count(state_carrier_airport, carrier, region) %>% 
+  rename(Frequency = n) %>% 
+  filter(!is.na(region))
+
+g <- ggplot(data = region_freq, aes(x= carrier, y = Frequency, fill = region))
+  
+g + geom_bar(stat="identity", position="fill") + coord_flip() + xlab("Airline") + ggtitle("Proportion of Flights to 4 regions by airline in the month of July")
+#Question: How can I rename the observations for region- i.e. "south" to "South". 
 ```
