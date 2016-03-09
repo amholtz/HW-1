@@ -34,15 +34,16 @@ states <- read.csv("data/states.csv", stringsAsFactors = FALSE) %>%
 
 
 
-## Admistrative:
+## Administrative:
 
 Please indicate
 
 * Who you collaborated with: Mohamed Hussein
-* Roughly how much time you spent on this HW: 9 hours
-* What gave you the most trouble: Problem number 4- I am not sure if I did this correctly. I did have a lot of trouble joining two tables for this problem. I had to join delaytime and weatherpattern by two variables "date" and "hour". I learned about full_join and using the c functino to do this. 
-* Any comments you have: I was confused for four and five what kind of conclusion I was actually suppose to make a figure for. It might be because I do not have great experience making figures yet.
-
+* Roughly how much time you spent on this HW: 19 hours
+* What gave you the most trouble: The weather problem- trying to figure out 
+what conclusions I can make
+* Any comments you have: I still am not sure exactly what data I was suppose
+to make figures for. Especially for number 4. 
 
 
 
@@ -54,29 +55,88 @@ Please indicate
     + the y-axis should be the proportion.
 * Which seasons did we tend to see the most and least delays of > 30 minutes.
 
+The box-and-whisker plot produced from the code below (Plot #01) portrays each 
+season as a time interval. The y-axis shows the proportion of flights delayed on
+each day, which are resembled by points. One can see the median for each season,
+and can make the conclusion that one would tend to see the most delays of 
+greater than 30 minutes in Spring 2011 and Summer 2011. In other words, 50% of 
+the total number of days in the spring and 50% of the total number of days in 
+the spring had the highest proportion of flights delayed more than 30 min. 50% 
+of the total number of days in Fall 2011 had the lowest proportion of flights 
+delayed more than 30 min and winter had the second lowest proportion. This means
+that Fall 2011 tended to have the least amount of delays of greater than 30 
+minutes. That being said, one can see the outliers in the fall, however this 
+should not effect the overall conclusion. The outlier represents one particular 
+day that had many delays. This could be due to an element independent from the 
+season altogether such as logistics and holiday weekends, and therefore, should 
+not affect the conclusion. It is important to understand the limitation of 
+this figure. Fall could have many flights delayed by 29 minutes. Therefore, we 
+cannot make the conclusion that Spring and Summer have MORE delayed flights than
+Fall, but only that Spring and Summer have more flights delayed over 30 minutes 
+than Fall 2011. In conclusion, if one wished to avoid delays of 30 minutes or 
+more in 2011, one should have flown in the fall or the winter rather than the 
+spring or summer. 
+
+
 ```{r, echo=FALSE, message=FALSE, fig.width=12, fig.height=6}
 
 total_flights <- select(flights, date, dep_delay) %>% 
+  
   group_by(date) %>% 
   tally() %>% 
   rename(num_flights = n)
-View(total_flights)
-  
+
+#This creates a table with the date and the number of delayed flights
 delay_flights <- select(flights, date, dep_delay) %>%
+  
   filter(dep_delay > 30) %>% 
   group_by(date) %>% 
   tally() %>% 
-  rename(num_delayed_flights = n)
+  rename(num_delayed_flights = n) %>% 
+  arrange(date)
 
-prop_delayed<- left_join(total_flights,delay_flights, by = "date") %>% 
+prop_delayed <- left_join(total_flights,delay_flights, by = "date") %>% 
+  
   mutate(prop = round(num_delayed_flights / num_flights , 3))
 
-ggplot(data=prop_delayed, aes(x = date, y = prop)) + ggtitle("Proportion of Flights delayed by more than 30 minutes on each day for one year") + 
-  ylab("Proportion") + xlab("Date") + geom_line()
 
+
+#Idea from Stackoverflow: http://stackoverflow.com/questions/9500114/find-which-season-a-particular-date-belongs-to
+getSeason <- function(DATES) {
+  
+  WS <- as.Date("2011-12-22", format = "%Y-%m-%d") # Winter Solstice
+  SE <- as.Date("2011-03-21",  format = "%Y-%m-%d") # Spring Equinox
+  SS <- as.Date("2011-06-21",  format = "%Y-%m-%d") # Summer Solstice
+  FE <- as.Date("2011-09-21",  format = "%Y-%m-%d") # Fall Equinox
+  
+  ifelse (DATES >= WS | DATES < SE, "Winter",
+          ifelse (DATES >= SE & DATES < SS, "Spring",
+                  ifelse (DATES >= SS & DATES < FE, "Summer", "Fall")))
+}
+  
+#This creates a table with date as one variable and the season association as the other
+date <- as.Date("2011-01-01", format = "%Y-%m-%d") + 0:364
+
+season_dates <- head(getSeason(date), 365) %>% 
+  
+  data_frame()%>% 
+  mutate(date) %>% 
+  arrange(date)
+
+colnames(season_dates) <- c("season", "date")
+
+#This merges the seasons with the number of delayed flights
+season_delayed <- left_join(prop_delayed, season_dates, by = "date") 
+
+#Plot 01
+q <- ggplot(data=season_delayed, aes(x = season, y = prop))
+
+q +
+  ggtitle("Plot #01 \n Number of Flights delayed by more than 30 min in each season of 2011") +
+  ylab("Proportion of flights delayed (>30min)") + 
+  xlab("Season") + 
+  geom_boxplot()
 ```
-
-
 
 
 
@@ -85,6 +145,33 @@ ggplot(data=prop_delayed, aes(x = date, y = prop)) + ggtitle("Proportion of Flig
 Some people prefer flying on older planes.  Even though they aren't as nice,
 they tend to have more room.  Which airlines should these people favor?
 
+One looking to fly in older planes should fly with American Airlines, Delta 
+Airlines, Envoy Air inc., and US Airlines. This is illustrated by the box-and-
+whisker plot (Plot #02) created by the code below. The box-plot for each carrier 
+depicts when the older 25%, 50%, and 75% of planes were made. The year 1980 is 
+overlaid on this graph to resemble the deregulation of flights that occurred in 
+the late 1970s. The planes with the most legroom, should be those before 1980.*
+According to the figure, American Airlines and Envoy Air have the most amount of
+planes built before 1980. Since no airlines have medians below 1980, the 
+airlines with the lowest medians should be favored by individuals wishing to 
+fly on older planes, meaning airlines AA, DL, UA, MQ, US, and WN should be 
+favored. They should avoid Airlines AS, B6, CO, EV, F9, OO, and YV. There are 
+outliers that are below 1980, however, one would be careful selecting the airline
+based off outliers, since they do not summarize the data set. For example, CO 
+has two planes built well before 1980 as seen the plot. The median, however, for
+CO's planes is in the 2000s. One cannot chose which plane they fly on when 
+booked a flight. It is mostly chance, which plane they are seating on. They can 
+only rely on probability. Therefore, those individuals have the greatest 
+probability of securing a seat on an old plane if they fly with those airlines 
+with the lowest medians (lowest meaning oldest). Lastly an important note, to 
+make this plot, the flights that had 'na' for year of manufacture were removed.
+It is possible that these planes were too old to have their year of manufacture
+noted. It is not possible to determine the true age of these planes, so they 
+were, therefore, removed from our plot. They are, nevertheless, still important
+to note. 
+
+*http://fortune.com/2015/09/12/airline-seats-shrink/
+
 ```{r, echo=FALSE, fig.width=12, fig.height=6}
 
 carrier_plane <- select(flights,carrier,plane)
@@ -92,26 +179,17 @@ plane_year <- select(planes, plane, year)
 carrier_year <- left_join(carrier_plane, plane_year, by= "plane")
 
 total_planes <- carrier_year %>% 
-  filter(!is.na(year)) %>%
-  group_by(carrier) %>% 
-  tally() %>% 
-  rename(total_num_planes = n)
+filter(!is.na(year)) %>%
+group_by(carrier) 
 
-old_planes <- carrier_year %>%
-  filter(!is.na(year)) %>%
-  group_by(carrier) %>% 
-  filter(year<1980) %>% 
-  tally() %>% 
-  rename(num_old_planes = n)
-View(old_planes)
+#Plot 02
+g <- ggplot(data = total_planes, aes(x= "", y= year)) 
+g + 
+  ggtitle("Plot #02 \n Age Distribution of planes by airline") +
+  xlab("Carrier") + ylab("Year of Manufacture") + 
+  geom_boxplot() +  geom_hline(yintercept=1980, col="red", size=0.5) +
+  facet_grid(.~carrier)
 
-prop_old_plane <- left_join(old_planes, total_planes, by= "carrier") %>% 
-  mutate(num_new_planes = total_num_planes - num_old_planes) %>% 
-  mutate(prop = round(num_old_planes / total_num_planes , 3)) 
- 
-
-ggplot(data = prop_old_plane, aes(x= carrier, y= prop)) + ggtitle("Proportion of planes that are older than 1980 per airline") +
-  xlab("Airline") + ylab("Proportion") + geom_bar(stat="identity")
 
 ```
 
@@ -119,96 +197,240 @@ ggplot(data = prop_old_plane, aes(x= carrier, y= prop)) + ggtitle("Proportion of
 ## Question 3:
 
 * What states did listed Southwest Airlines flights tend to fly to?
+
+In order to answer this question, a bar plot (Plot #03) was made using each 
+distinct flight number and matching the flight number to the destination airport
+and state. From this bar plot, on can see that the number of flight numbers 
+dedicated to flights to Texas dominated over the other states. The most common 
+flied to states were those in the South and also resort or vacation states, such
+as FL, LA, CA, and OK. Illinois was the 6th most common state that listed 
+Southwest flights flew to. This is most likely due to Chicago. There are 31 
+states that Delta does not fly to from Houston. PA, NJ, and AR are flied to less
+than any other state that Delta does fly to from Houston. 
+
+What is perhaps more shocking is the amount of flight numbers that were
+assigned to multiple destination airports. For example, flight number WN167 is 
+assigned to flights from Houston to MSY, DEN, and LAS. Although, MSY is the 
+far more frequently flown destination airport to number WN167. DEN and LAS are
+assigned to WN167 only once in 2011. This could have resulted from an error due 
+to human mistake when inputting the data, but it could also be fact. If there 
+was no WN167 flight to MSY that day, it is fair to assign that number to DEN. I
+would, however, think this would cause confusion. Shockingly, WN167 is only one 
+example of a common pattern in Delta flight number allocation. A second bar
+plot was created (Plot #04) which shows the number (or count) of flight numbers
+that were assigned one or more destination airports. In other words, since 
+WN167 was assigned three destination cities, it contributes to the bar found
+at 3 on the x-axis (There are 144 additional flights with 3 varying airport
+destinations).
+
 * What states did all Southwest Airlines flights tend to fly to?
+
+The bar plot made from all Southwest Airlines flights (Plot #05) appears very 
+similar to the bar plot made in the first part of question 3. Again, Texas is 
+the most flight to state in total for all flights leaving from Houston. These 
+flights range from flights to Dallas to Austin. Second to Texas, Florida is 
+found more than 10,000 flights below Texas. Texas as a destination, therefore, 
+dominates the number of flights leaving Houston. Again, LA, and CA are the 
+third and fourth most common destination states. Most of the states are the 
+destination state between 2500 and 0 flights. 
 
 
 ```{r, echo=FALSE, message=FALSE, fig.width=12, fig.height=6}
 
+#Listed flights---------
+
+#Each flight number is counted as one listed flight
+
+state_sw_date <- 
+  
+  select(flights, flight, dest, carrier, date) %>% 
+  filter(carrier == "WN") %>%
+  distinct(flight) %>% 
+  arrange(dest, date)
+  
+#This leaves you with the frequency of flights to each city for each day
+airport_state <- select(airports, iata, state)
+
+state_freq <- 
+  
+  #combine each flight with destination state
+  left_join(state_sw_date, airport_state, by = c("dest" = "iata")) %>% 
+  select(dest, state) %>% #remove n variable
+  filter(!is.na(state)) %>%  #na is florida ecb
+  group_by(state) %>% 
+  tally()
+
+state_freq$state <- 
+  factor(state_freq$state, levels = state_freq$state[order(-state_freq$n)])
+
+#Plot 03
+r <- ggplot(data = state_freq, aes(x= state, y = n)) 
+r + 
+  xlab("State") + ylab("Frequency") + 
+  ggtitle("Plot #03 \n Southwest Airline's most flied to States by flight number") + 
+  geom_bar(stat="identity")
+
+#Figure to demonstrate flight numbers with multiple destination airports
+repeated_flight_num <- select(flights, flight, dest, carrier) %>% 
+  filter(carrier=="WN") %>% 
+  arrange(flight) %>% 
+  group_by(flight, dest) %>% 
+  summarise() %>% 
+  tally() %>% 
+  ungroup() %>% 
+  rename(number_of_destinations = n) %>% 
+  count(number_of_destinations) %>% 
+  rename(numflights_with_frequency = n)
+
+repeated_flight_num$number_of_destinations <- 
+  factor(repeated_flight_num$number_of_destinations, levels = repeated_flight_num$number_of_destinations[order(-repeated_flight_num$numflights_with_frequency)])
+
+#Plot 04
+z <- ggplot(data = repeated_flight_num, aes(x= number_of_destinations, y = numflights_with_frequency))
+
+z + 
+  geom_bar(stat="identity") +
+  xlab("Number of Destination Airports") +
+  ylab("Count of Flight numbers") +
+  ggtitle("Plot #04 \n The Count of Individual Flight Numbers to Multiple Destinations")
+  
+
+
+
 #All flights---------
 state_sw <- select(flights, dest, carrier) %>% 
   filter(carrier == "WN")
+
 airport_state <- select(airports, iata, state)
 
-state_carrier_airport <- left_join(state_sw, airport_state, by = c("dest" = "iata")) %>% 
+state_carrier_airport <-
+  left_join(state_sw, airport_state, by = c("dest" = "iata")) %>% 
   group_by(state) %>% 
   filter(!is.na(state)) %>% 
   tally()
 
-ggplot(data = state_carrier_airport, aes(x= state,y = n, fill = state)) + xlab("State") + ylab("Frequency") + ggtitle("Southwest Airlines most flied States") + geom_bar(stat="identity")
+state_carrier_airport$state <- 
+  factor(state_carrier_airport$state, levels =
+           state_carrier_airport$state[order(-state_carrier_airport$n)])
 
-#Listed flights---------
-#meaning destination cities are only counted once per day
-state_sw_date <- select(flights, dest, carrier, date) %>% 
-  filter(carrier == "WN") %>% 
-  group_by(date) %>% 
-  count(date, dest)
-#This leaves you with the frequency of flights to each city for each day
-airport_state <- select(airports, iata, state)
-state_freq <- left_join(state_sw_date, airport_state, by = c("dest" = "iata")) %>% 
-  #combine frequency of airport per day with state
-  select(dest, state) %>% #remove n variable
-  filter(!is.na(state)) %>% 
-  group_by(state) %>% 
-  tally()
-
-ggplot(data = state_freq, aes(x= state, y = n)) + xlab("State") + ylab("Frequency") + ggtitle("Southwest Airlines most flied States per day") + geom_bar(stat="identity")
+#Plot 05
+v <- ggplot(data = state_carrier_airport, aes(x= state,y = n)) 
+v + 
+  xlab("State") + 
+  ylab("Frequency") + 
+  ggtitle("Plot #05 \n Southwest Airline's most flied to States") + 
+  geom_bar(stat="identity")
 
 ```
-
-
-
 
 
 ## Question 4:
 
 What weather patterns are associated with the biggest departure delays?
 
+To answer this question two different plots were designed. Prior to creating
+plots, scatter plots for the weather variables including temp, precip, 
+gust speed, wind speed, wind direction, dew point, humidity, and visibility
+were made against minutes delayed for each flight. The most telling scatter
+plot was plotting the dew point (ºF) against the delayed time (min) (Plot #07).
+This showed a positive relationship, meaning that the higher the dew point 
+temperature became, the longer the delay became. Dew Point is defined as the 
+temperature where condensation begins, or where the relative humidity would be 
+100% if the air was cooled. This is way to measure moisture in the air. The 
+higher the dew point temperature the more water vapor is in the air. Therefore, 
+dew point is similar to humidity, and it relates to precipitation. Days with high
+dew point temperature could be relatively stormy or raining days. It is
+important not to forget the magnitude of each point on the plot. The darker 
+the circle, the more common that point is. The most common points are those 
+between 60ºF and 80ºF, which also have the highest delays. Therefore, it is 
+difficult to determine weather the flight delays are due to the dew point temp 
+or if the delays are due to logistical or other weather problems that just 
+happen to occur while dew point is relatively normal between 60 and 80ºF.
+
+To further determine which weather patterns were associated with delayed flights
+a box-and-whisker plot (Plot #08) was created to demonstrate the effects of each
+condition on the time of delay. The x-axis shows the log10 of the delay time 
+(min) in order to ease viewing of the plots. At first glance, one can see that 
+the medians from light freezing rain and freezing rain resulted in the longest 
+flight log10-delays (min). Freezing rain can be quite problematic for a flight- 
+especially for one in Houston, where freezing conditions are not common. 
+Freezing conditions can cause problems with the runway, cleaning and water 
+loading, and engines. The plane actually has to be sprayed to prevent freezing 
+while the plane is in flight. In addition, in-flight conditions could be 
+effected, so waiting for the freezing rain to perhaps subside is a reason for 
+increases delays. Looking back to the plot, one sees many outliers from 
+scattered clods, partly cloudy, overcast, and mostly cloudy, as well as clear. 
+The increase in delays on clear days is most likely due to factors external from
+weather such as logistics and holiday breaks. The outliers in the cloudy 
+conditions as well as the hazy condition could be a result of decreased 
+visibility. It would be beneficial to cross reference the dates that resulted 
+in outliers with the visibility data. Lastly, thunderstorms and rain also has an
+increase in delay time. Thunderstorms and rain is severe weather, which make it 
+hard to fly. 
+
+It is important to mention that 'na' observations were removed from
+the data. These values could contribute to a more defined conclusion, but they 
+are not helpful when presenting the data in this example, since we have no
+further information. 
+
+
 ```{r, echo=FALSE, message=FALSE, fig.width=12, fig.height=6}
 
-Q4 <- filter(flights, dep_delay>0) %>% 
+Q4 <- 
+  filter(flights, dep_delay>0) %>% 
   summarise(
     fourt_quantile = quantile(dep_delay, 0.75) 
   )
 
-delay_time <- select(flights,date,hour,dep_delay) %>%
+delay_time <- 
+  
+  select(flights,date,hour,dep_delay) %>%
   filter(dep_delay>=25) %>% 
   arrange(date, hour) %>% 
   group_by(date, hour) %>% 
   summarise(avg_delay=mean(dep_delay))
 
-weather_pattern <- select(weather, date, hour, visibility, wind_speed, humidity, dew_point, wind_dir, gust_speed, precip,conditions) %>% 
-  arrange(date, hour)
+weather_pattern <- 
+  select(weather, date, hour, visibility, wind_speed, humidity, 
+         dew_point, wind_dir, gust_speed, precip, conditions, temp) %>% 
+  arrange(date, hour) 
 
 
-weather_pattern_delay <- full_join(delay_time, weather_pattern, by = c("date", "hour")) %>% 
-  filter(!is.na(humidity)) %>% 
-           filter(!is.na(avg_delay)) %>% 
-                    filter(!is.na(dew_point)) %>% 
-                             filter(!is.na(gust_speed))
-                           
-                                  
-plot_hd <- ggplot(data = weather_pattern_delay, aes(x= humidity, y = avg_delay)) + geom_point()
-plot_dd <- ggplot(data = weather_pattern_delay, aes(x= dew_point, y = avg_delay)) + geom_point()
-plot_gd <- ggplot(data = weather_pattern_delay, aes(x= gust_speed, y = avg_delay)) + geom_point()
+weather_pattern_delay <- 
+  full_join(delay_time, weather_pattern, by = c("date", "hour")) %>% 
+  filter(!is.na(avg_delay)) %>% 
+  filter(!is.na(dew_point))
 
-plot_hd + xlab("Humidity(%)") + ylab("Delay(min)") + ggtitle("Biggest Delays by Humidity")
-plot_dd + xlab("Dew Point") + ylab("Delay(min)") + ggtitle("Biggest Delays by Dew Point")
-plot_gd + xlab("Gust Speed(mph)") + ylab("Delay(min)") + ggtitle("Biggest Delays by Gust Speed")
 
+#Plot 06
+plot_dp <-
+  ggplot(data = weather_pattern_delay, aes(x= dew_point, y = avg_delay)) + 
+  geom_jitter(alpha = 0.05) +
+  geom_smooth(method="lm") +
+  ylim(c(0,125)) 
+ 
+plot_dp + 
+  xlab("Dew Point (ºFahrenheit)") + ylab("Delay(min)") + 
+  ggtitle("Plot #06 \n Biggest Delays by Dew Point") 
 
 #To accomplish conditions
-delay_conditions <- select(weather_pattern_delay, conditions, avg_delay) %>%
+delay_conditions <-
+  
+  select(weather_pattern_delay, conditions, avg_delay) %>%
   filter(!is.na(avg_delay)) %>% 
-  filter(!is.na(conditions)) %>% 
-  ungroup() %>% 
-  arrange(conditions) %>% 
-  group_by(conditions) %>% 
-  summarise(avg_delay = mean(avg_delay))
-
-ggplot(data = delay_conditions, aes(x= conditions, y = avg_delay, fill = conditions)) + xlab("Conditions") + geom_bar(stat="identity", position="stack") + ylab("Delay(min)") + ggtitle("Biggest Delays by Weather Condition")
-
+  filter(!is.na(conditions))
+ 
+#Plot 07
+m <- ggplot(data = delay_conditions, aes(x= conditions, y = avg_delay))
+m + 
+  xlab("Condition") + 
+  geom_boxplot() + 
+  coord_flip() +
+  scale_y_log10() +
+  ylab("Delay log10 (min)") + 
+  ggtitle("Plot #07 \n Biggest Delays by Weather Condition")
+ 
 ```
-
 
 
 
@@ -219,6 +441,9 @@ I want to know what proportionately regions (NE, south, west, midwest) each
 carrier flies to from Houston in the month of July.  Consider the `month()`
 function from the `lubridate` package.
 
+''
+From the data given, the figure (Plot #08) from the code below was made to illustrate the proportion of flights to four geographical regions for each carrier in the month of July. Airlines YV, FL, and AA fly only to states in the SOUTH, while the airline B6 flies only to the NORTHEAST, AS and F9 fly only to the WEST. B6 is Jetblue, who has a hub in New York City- they only fly to New York from Houston. AS is Alaskan Airlines, who only flies to Seattle from Houston, and F9 is Frontier Airlines which flies to the Denver from Houston. The other airlines are a mixture of midwest, NE, south, and West. One can see trends. For example, the most flied to region is the South. The least flied region is the NE. The west is the second most flied to region, and the midwest is the third most. Geographically, this make sense. The South is the closest region to Texas, then the West, then midwest, and then the NE. The Northeast is the farthest region away from Texas. 
+
 ```{r, echo=FALSE, message=FALSE, fig.width=12, fig.height=6}
 
 dest_carrier_date <- select(flights, date, dest, carrier) %>% 
@@ -227,15 +452,24 @@ dest_carrier_date <- select(flights, date, dest, carrier) %>%
 
 airport_state <- select(airports, iata, state)
 
-state_carrier_airport <- left_join(dest_carrier_date, airport_state, by = c("dest" = "iata"))
-state_carrier_airport <- left_join(state_carrier_airport, states, by = "state") 
+state_carrier_airport <- 
+  left_join(dest_carrier_date, airport_state, by = c("dest" = "iata"))
 
-region_freq <- count(state_carrier_airport, carrier, region) %>% 
+state_carrier_airport <- 
+  left_join(state_carrier_airport, states, by = "state") 
+
+region_freq <- 
+  
+  count(state_carrier_airport, carrier, region) %>% 
   rename(Frequency = n) %>% 
   filter(!is.na(region))
 
+#Plot 08
 g <- ggplot(data = region_freq, aes(x= carrier, y = Frequency, fill = region))
   
-g + geom_bar(stat="identity", position="fill") + coord_flip() + xlab("Airline") + ggtitle("Proportion of Flights to 4 regions by airline in the month of July")
-#Question: How can I rename the observations for region- i.e. "south" to "South". 
+g + 
+  geom_bar(stat="identity", position="fill") +
+  coord_flip() + xlab("Airline") + 
+  ggtitle("Plot #08 \n Proportion of Flights to 4 regions by airline in the month of July")
+ 
 ```
